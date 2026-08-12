@@ -1,0 +1,868 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<title>Redundanz — wo ein Text sich wiederholt</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="LZ77 und Huffman von Grund auf: sichtbar gemacht, was jedes Zeichen eines Textes an Bits kostet." />
+
+<style>
+  :root {
+    --paper:  #EDEFEA;
+    --panel:  #F7F8F4;
+    --sunk:   #E1E5DE;
+    --rule:   #C7CDC5;
+    --ink:    #1C221E;
+    --muted:  #69736B;
+    --cheap:  #2E6F5E;
+    --costly: #B23A2E;
+    --focus:  #2E6F5E;
+    --shadow: 0 1px 0 rgba(28,34,30,.05), 0 10px 24px -16px rgba(28,34,30,.5);
+
+    --f-body: -apple-system, "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --f-mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "DejaVu Sans Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:  #141715;
+      --panel:  #1B1F1C;
+      --sunk:   #0E110F;
+      --rule:   #2B322D;
+      --ink:    #DDE3DC;
+      --muted:  #8A948B;
+      --cheap:  #57B39A;
+      --costly: #E0705E;
+      --focus:  #57B39A;
+      --shadow: 0 1px 0 rgba(255,255,255,.03), 0 12px 30px -18px #000;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:  #141715;
+    --panel:  #1B1F1C;
+    --sunk:   #0E110F;
+    --rule:   #2B322D;
+    --ink:    #DDE3DC;
+    --muted:  #8A948B;
+    --cheap:  #57B39A;
+    --costly: #E0705E;
+    --focus:  #57B39A;
+    --shadow: 0 1px 0 rgba(255,255,255,.03), 0 12px 30px -18px #000;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--f-body); font-size: 15px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1120px; margin: 0 auto;
+    padding: clamp(20px, 4vw, 44px) clamp(14px, 3vw, 28px) 64px;
+    display: flex; flex-direction: column; gap: 22px;
+  }
+
+  /* ---------- Kopf im Beleg-Stil ---------- */
+  header.doc { display: flex; flex-direction: column; gap: 10px; }
+  .stempel {
+    font-family: var(--f-mono); font-size: 10px; letter-spacing: .22em;
+    text-transform: uppercase; color: var(--muted);
+    display: flex; gap: 12px; align-items: center; margin: 0;
+  }
+  .stempel::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
+
+  h1 {
+    font-family: var(--f-mono); font-weight: 700;
+    font-size: clamp(26px, 4.6vw, 44px); line-height: 1.05;
+    letter-spacing: -.03em; margin: 0; text-wrap: balance;
+  }
+  h1 span { color: var(--cheap); }
+  .lead { max-width: 68ch; color: var(--muted); margin: 0; }
+  .lead b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Bedienleiste ---------- */
+  .bar {
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+    background: var(--panel); border: 1px solid var(--rule);
+    padding: 10px 12px; box-shadow: var(--shadow);
+  }
+  .bar .label {
+    font-family: var(--f-mono); font-size: 10px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  button, select {
+    font-family: var(--f-mono); font-size: 12px; color: var(--ink);
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 0;
+    padding: 7px 11px; cursor: pointer; letter-spacing: .03em;
+  }
+  button:hover, select:hover { border-color: var(--cheap); }
+  button:active { background: var(--sunk); }
+  button.primary { background: var(--cheap); border-color: var(--cheap); color: var(--panel); }
+  button.primary:hover { filter: brightness(1.1); }
+  button:disabled { opacity: .5; cursor: default; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  /* ---------- Kennzahlen ---------- */
+  .zahlen {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+    gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+  }
+  .zahl { background: var(--panel); padding: 9px 11px; display: flex; flex-direction: column; gap: 1px; }
+  .zahl dt {
+    font-family: var(--f-mono); font-size: 9px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); margin: 0;
+  }
+  .zahl dd {
+    margin: 0; font-family: var(--f-mono); font-size: 16px;
+    font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+    overflow-wrap: anywhere;
+  }
+  .zahl dd small { font-size: 11px; color: var(--muted); letter-spacing: 0; }
+  .zahl dd.gut { color: var(--cheap); }
+  .zahl dd.warn { color: var(--costly); }
+
+  /* ---------- Textfläche ---------- */
+  .flaeche {
+    position: relative; background: var(--panel);
+    border: 1px solid var(--rule); box-shadow: var(--shadow);
+  }
+  .flaeche-kopf {
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    padding: 9px 12px; border-bottom: 1px solid var(--rule);
+  }
+  .skala { display: flex; align-items: center; gap: 7px; margin-left: auto; }
+  .skala .balken {
+    width: 120px; height: 9px; border: 1px solid var(--rule);
+    background: linear-gradient(90deg, var(--panel), var(--costly));
+  }
+  .skala span {
+    font-family: var(--f-mono); font-size: 9px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted);
+  }
+
+  #text {
+    position: relative; margin: 0; padding: 16px 18px 20px;
+    font-family: var(--f-mono); font-size: 13.5px; line-height: 1.85;
+    white-space: pre-wrap; word-break: break-word;
+    max-height: 62vh; overflow: auto;
+  }
+  #text .tok { border-radius: 2px; }
+  #text .tok.m { box-shadow: inset 0 -2px 0 var(--cheap); cursor: pointer; }
+  #text .tok.m.aktiv { outline: 1px solid var(--cheap); outline-offset: 1px; }
+  #text .tok.q { outline: 1px dashed var(--cheap); outline-offset: 1px; }
+  #text .abschnitt {
+    display: block; margin-top: 10px; padding-top: 8px;
+    border-top: 1px dashed var(--rule);
+    font-size: 11px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase;
+  }
+  svg.boegen { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+  svg.boegen path { fill: none; stroke: var(--cheap); stroke-width: 1.4; opacity: .85; }
+
+  /* das Attribut hidden muss gewinnen, sonst zeigt display:flex das Feld trotzdem */
+  .eingabe { display: flex; flex-direction: column; gap: 8px; }
+  .eingabe[hidden] { display: none; }
+
+  textarea {
+    width: 100%; min-height: 150px; resize: vertical;
+    font-family: var(--f-mono); font-size: 13px; line-height: 1.6;
+    background: var(--panel); color: var(--ink);
+    border: 1px solid var(--rule); padding: 12px;
+  }
+
+  .hinweis {
+    font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); margin: 0;
+  }
+
+  /* ---------- Histogramm ---------- */
+  .zwei { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; }
+  .kasten {
+    background: var(--panel); border: 1px solid var(--rule);
+    box-shadow: var(--shadow); padding: 12px 14px 14px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .kasten h2 {
+    font-family: var(--f-mono); font-size: 10px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--muted); margin: 0;
+    padding-bottom: 7px; border-bottom: 1px solid var(--rule); font-weight: 500;
+  }
+  canvas { display: block; width: 100%; height: auto; }
+
+  table.tab {
+    width: 100%; border-collapse: collapse;
+    font-family: var(--f-mono); font-size: 12px; font-variant-numeric: tabular-nums;
+  }
+  table.tab th, table.tab td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--rule); text-align: left; }
+  table.tab th {
+    font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); font-weight: 500;
+  }
+  table.tab td.num { text-align: right; }
+  table.tab td.gut { color: var(--cheap); }
+  table.tab td.warn { color: var(--costly); }
+
+  /* ---------- Fließtext ---------- */
+  .noten {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 26px; border-top: 1px solid var(--rule); padding-top: 22px;
+  }
+  .noten section { display: flex; flex-direction: column; gap: 7px; }
+  .noten h3 { font-family: var(--f-mono); font-size: 14px; margin: 0; letter-spacing: -.01em; }
+  .noten p { margin: 0; color: var(--muted); font-size: 14px; max-width: 52ch; }
+  .noten b { color: var(--ink); font-weight: 600; }
+  code {
+    font-family: var(--f-mono); font-size: .9em; background: var(--sunk);
+    padding: 1px 4px; color: var(--ink);
+  }
+
+  footer {
+    border-top: 1px solid var(--rule); padding-top: 16px;
+    font-family: var(--f-mono); font-size: 10px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="doc">
+    <p class="stempel">LZ77 + Huffman · von Grund auf · Rückweg geprüft</p>
+    <h1>Redundanz: wo ein Text sich <span>wiederholt</span></h1>
+    <p class="lead">
+      Kompression ist keine Magie, sondern Buchführung: was schon einmal dastand, wird nicht
+      noch einmal geschrieben, sondern als Rückverweis notiert; und was häufig vorkommt,
+      bekommt ein kürzeres Zeichen als was selten vorkommt. Beides passiert unsichtbar.
+      Hier ist es sichtbar — <b>jedes Zeichen ist danach eingefärbt, was es tatsächlich
+      an Bits kostet.</b> Blasse Stellen sind fast umsonst, kräftige sind teuer.
+    </p>
+  </header>
+
+  <div class="bar">
+    <span class="label">Probe</span>
+    <select id="probe">
+      <option value="prosa" selected>Deutsche Prosa</option>
+      <option value="code">Quelltext</option>
+      <option value="liste">Liste mit Wiederholung</option>
+      <option value="einmalig">Kleiner Wortschatz</option>
+      <option value="zufall">Zufallszeichen</option>
+    </select>
+    <button id="eigen">Eigenen Text einsetzen</button>
+    <button id="rechne" class="primary">Neu rechnen</button>
+    <span class="label" id="status" style="margin-left:auto">bereit</span>
+  </div>
+
+  <div id="eingabe" class="eingabe" hidden>
+    <textarea id="quelle" spellcheck="false" aria-label="Eigener Text"></textarea>
+    <p class="hinweis">Einfügen und auf „Neu rechnen“ drücken. Alles bleibt im Browser.</p>
+  </div>
+
+  <dl class="zahlen">
+    <div class="zahl"><dt>Original</dt><dd id="k-org">—</dd></div>
+    <div class="zahl"><dt>Gepackt</dt><dd id="k-neu">—</dd></div>
+    <div class="zahl"><dt>davon Kopf</dt><dd id="k-kopf">—</dd></div>
+    <div class="zahl"><dt>Verhältnis</dt><dd id="k-quote">—</dd></div>
+    <div class="zahl"><dt>Bits je Zeichen</dt><dd id="k-bpc">—</dd></div>
+    <div class="zahl"><dt>aus Rückverweis</dt><dd id="k-anteil">—</dd></div>
+    <div class="zahl"><dt>Browser-Deflate</dt><dd id="k-nativ">—</dd></div>
+    <div class="zahl"><dt>Rückweg</dt><dd id="k-rueck">—</dd></div>
+  </dl>
+
+  <div class="flaeche">
+    <div class="flaeche-kopf">
+      <span class="label">Kostenkarte</span>
+      <span class="hinweis" id="karte-hinweis">Über eine unterstrichene Stelle fahren zeigt, woher sie kopiert wurde</span>
+      <span class="skala">
+        <span>billig</span><span class="balken"></span><span>teuer</span>
+      </span>
+    </div>
+    <div id="text"><svg class="boegen" id="boegen"></svg></div>
+  </div>
+
+  <div class="zwei">
+    <div class="kasten">
+      <h2>Wortlängen im Code</h2>
+      <canvas id="hist" width="640" height="150" aria-label="Verteilung der Huffman-Codelängen"></canvas>
+      <p class="hinweis" id="hist-note">—</p>
+    </div>
+    <div class="kasten">
+      <h2>Was die Bits ausmacht</h2>
+      <table class="tab" id="aufteilung">
+        <thead><tr><th>Posten</th><th class="num">Bits</th><th class="num">Anteil</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="noten">
+    <section>
+      <h3>Der Rückverweis</h3>
+      <p>
+        <b>LZ77</b> schaut beim Schreiben zurück: steht die kommende Zeichenfolge schon
+        irgendwo in den letzten 32 768 Zeichen, notiert es statt der Zeichen nur
+        „gehe <i>d</i> zurück und nimm <i>l</i> Stück“. Genau diese Stellen sind hier
+        grün unterstrichen — der Rest musste einzeln geschrieben werden.
+      </p>
+    </section>
+    <section>
+      <h3>Das kürzere Zeichen</h3>
+      <p>
+        <b>Huffman</b> zählt danach, wie oft jedes Symbol vorkommt, und gibt dem häufigsten
+        das kürzeste Codewort. In deutschem Text bekommt „e“ etwa drei bis vier Bit, ein
+        „q“ dagegen zwölf und mehr. Das Histogramm zeigt, wie sich die Wortlängen verteilen.
+      </p>
+    </section>
+    <section>
+      <h3>Der Kopf zahlt mit</h3>
+      <p>
+        Der Entpacker muss die Codetabelle kennen, also steht sie vorne mit drin. Naiv
+        abgelegt sind das <b>162 Byte Fixkosten</b> — bei kurzen Texten mehr als die Daten
+        selbst. Deshalb wird die Tabelle ihrerseits lauflängencodiert und gehuffmant;
+        das drückt sie hier auf 20 bis 70 Byte.
+      </p>
+    </section>
+    <section>
+      <h3>Gegenprobe</h3>
+      <p>
+        Zwei Prüfungen laufen bei jedem Durchgang: das Entpackte wird Byte für Byte mit
+        dem Original verglichen, und die Größe wird gegen das im Browser eingebaute
+        <code>CompressionStream('deflate-raw')</code> gehalten. Ohne beides wäre jede
+        Zahl hier wertlos.
+      </p>
+    </section>
+  </div>
+
+  <footer>Redundanz · LZ77 mit Hash-Ketten und Lazy Matching · kanonischer Huffman · Bitstrom und Rückweg vollständig im Browser</footer>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* =================== Codec: LZ77 + Huffman =================== */
+  const MIN_MATCH = 3, MAX_MATCH = 258, WINDOW = 32768;
+  const LIT_N = 286, DIST_N = 30, EOB = 256;
+
+  const LEN_BASE = [3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258];
+  const LEN_EXTRA= [0,0,0,0,0,0,0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4,  4,  5,  5,  5,  5,  0];
+  const DIST_BASE= [1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577];
+  const DIST_EXTRA=[0,0,0,0,1,1,2, 2, 3, 3, 4, 4, 5, 5,  6,  6,  7,  7,  8,  8,   9,   9,  10,  10,  11,  11,  12,   12,   13,   13];
+  const CL_ORDER = [16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];
+
+  const lenCode = (l) => { for (let i = LEN_BASE.length - 1; i >= 0; i--) if (l >= LEN_BASE[i]) return i; return 0; };
+  const distCode = (d) => { for (let i = DIST_BASE.length - 1; i >= 0; i--) if (d >= DIST_BASE[i]) return i; return 0; };
+
+  function lz77(src, maxChain) {
+    maxChain = maxChain || 128;
+    const n = src.length, HS = 1 << 15, HM = HS - 1;
+    const head = new Int32Array(HS).fill(-1), prev = new Int32Array(Math.max(1, n)).fill(-1);
+    const hash = (i) => ((src[i] << 10) ^ (src[i + 1] << 5) ^ src[i + 2]) & HM;
+    const tokens = [];
+
+    function best(pos) {
+      if (pos + MIN_MATCH > n) return null;
+      let cur = head[hash(pos)], bestLen = 0, bestDist = 0, chain = maxChain;
+      const limit = Math.max(0, pos - WINDOW);
+      while (cur >= 0 && cur >= limit && chain-- > 0) {
+        if (src[cur + bestLen] === src[pos + bestLen]) {
+          let l = 0; const max = Math.min(MAX_MATCH, n - pos);
+          while (l < max && src[cur + l] === src[pos + l]) l++;
+          if (l > bestLen) { bestLen = l; bestDist = pos - cur; if (l >= max) break; }
+        }
+        cur = prev[cur];
+      }
+      return bestLen >= MIN_MATCH ? { len: bestLen, dist: bestDist } : null;
+    }
+    function insert(pos) {
+      if (pos + MIN_MATCH > n) return;
+      const h = hash(pos); prev[pos] = head[h]; head[h] = pos;
+    }
+
+    let i = 0;
+    while (i < n) {
+      const m = best(i);
+      if (m) {
+        if (i + 1 < n) {
+          insert(i);
+          const m2 = best(i + 1);
+          if (m2 && m2.len > m.len) { tokens.push({ t: 0, v: src[i], pos: i, bits: 0 }); i++; continue; }
+        } else insert(i);
+        tokens.push({ t: 1, len: m.len, dist: m.dist, pos: i, bits: 0 });
+        for (let k = 1; k < m.len; k++) insert(i + k);
+        i += m.len;
+      } else {
+        tokens.push({ t: 0, v: src[i], pos: i, bits: 0 });
+        insert(i); i++;
+      }
+    }
+    return tokens;
+  }
+
+  function codeLengths(freq, limit) {
+    const n = freq.length;
+    let f = Int32Array.from(freq);
+    for (let runde = 0; runde < 40; runde++) {
+      const nodes = [];
+      for (let i = 0; i < n; i++) if (f[i] > 0) nodes.push({ w: f[i], sym: i, l: null, r: null });
+      if (!nodes.length) return new Uint8Array(n);
+      if (nodes.length === 1) { const o = new Uint8Array(n); o[nodes[0].sym] = 1; return o; }
+      nodes.sort((a, b) => a.w - b.w);
+      const q = nodes.slice();
+      while (q.length > 1) {
+        const a = q.shift(), b = q.shift();
+        const node = { w: a.w + b.w, sym: -1, l: a, r: b };
+        let lo = 0, hi = q.length;
+        while (lo < hi) { const mid = (lo + hi) >> 1; if (q[mid].w <= node.w) lo = mid + 1; else hi = mid; }
+        q.splice(lo, 0, node);
+      }
+      const out = new Uint8Array(n);
+      let max = 0;
+      (function walk(nd, d) {
+        if (nd.sym >= 0) { out[nd.sym] = Math.max(1, d); if (d > max) max = d; return; }
+        walk(nd.l, d + 1); walk(nd.r, d + 1);
+      })(q[0], 0);
+      if (max <= limit) return out;
+      for (let i = 0; i < n; i++) if (f[i] > 0) f[i] = Math.max(1, f[i] >> 1);
+    }
+    throw new Error("Codelänge ließ sich nicht begrenzen");
+  }
+
+  function canonical(lens) {
+    let maxLen = 0; for (const l of lens) if (l > maxLen) maxLen = l;
+    const blCount = new Int32Array(maxLen + 1);
+    for (const l of lens) if (l) blCount[l]++;
+    const next = new Int32Array(maxLen + 2);
+    let code = 0;
+    for (let b = 1; b <= maxLen; b++) { code = (code + blCount[b - 1]) << 1; next[b] = code; }
+    const codes = new Int32Array(lens.length);
+    for (let i = 0; i < lens.length; i++) if (lens[i]) codes[i] = next[lens[i]]++;
+    return codes;
+  }
+
+  class BitWriter {
+    constructor() { this.bytes = []; this.cur = 0; this.nbits = 0; }
+    push(v, n) { for (let i = n - 1; i >= 0; i--) { this.cur = (this.cur << 1) | ((v >> i) & 1); if (++this.nbits === 8) { this.bytes.push(this.cur); this.cur = 0; this.nbits = 0; } } }
+    pushRev(v, n) { for (let i = 0; i < n; i++) { this.cur = (this.cur << 1) | ((v >> i) & 1); if (++this.nbits === 8) { this.bytes.push(this.cur); this.cur = 0; this.nbits = 0; } } }
+    finish() { while (this.nbits) this.push(0, 1); return Uint8Array.from(this.bytes); }
+    get bitLength() { return this.bytes.length * 8 + this.nbits; }
+  }
+  class BitReader {
+    constructor(b) { this.b = b; this.i = 0; this.bit = 0; }
+    read(n) { let v = 0; for (let k = 0; k < n; k++) { v = (v << 1) | ((this.b[this.i] >> (7 - this.bit)) & 1); if (++this.bit === 8) { this.bit = 0; this.i++; } } return v; }
+    readRev(n) { let v = 0; for (let k = 0; k < n; k++) { v |= ((this.b[this.i] >> (7 - this.bit)) & 1) << k; if (++this.bit === 8) { this.bit = 0; this.i++; } } return v; }
+  }
+
+  // 286 + 30 Längen zu 4 Bit wären 162 Byte Fixkosten und bei kurzem Text der
+  // gesamte Rückstand. Also die Tabelle selbst lauflängencodieren und huffmanen.
+  function rleLengths(all) {
+    const out = [];
+    let i = 0;
+    while (i < all.length) {
+      const v = all[i];
+      let run = 1;
+      while (i + run < all.length && all[i + run] === v) run++;
+      if (v === 0) {
+        while (run >= 11) { const k = Math.min(138, run); out.push({ s: 18, extra: k - 11, bits: 7 }); run -= k; i += k; }
+        while (run >= 3) { const k = Math.min(10, run); out.push({ s: 17, extra: k - 3, bits: 3 }); run -= k; i += k; }
+        while (run-- > 0) { out.push({ s: 0, extra: 0, bits: 0 }); i++; }
+      } else {
+        out.push({ s: v, extra: 0, bits: 0 }); i++; run--;
+        while (run >= 3) { const k = Math.min(6, run); out.push({ s: 16, extra: k - 3, bits: 2 }); run -= k; i += k; }
+        while (run-- > 0) { out.push({ s: v, extra: 0, bits: 0 }); i++; }
+      }
+    }
+    return out;
+  }
+
+  function encode(src) {
+    const tokens = lz77(src);
+    const litFreq = new Int32Array(LIT_N), distFreq = new Int32Array(DIST_N);
+    litFreq[EOB] = 1;
+    for (const t of tokens) {
+      if (t.t === 0) litFreq[t.v]++;
+      else { litFreq[257 + lenCode(t.len)]++; distFreq[distCode(t.dist)]++; }
+    }
+    const litLens = codeLengths(litFreq, 15), distLens = codeLengths(distFreq, 15);
+    const litCodes = canonical(litLens), distCodes = canonical(distLens);
+
+    let hlit = LIT_N; while (hlit > 257 && litLens[hlit - 1] === 0) hlit--;
+    let hdist = DIST_N; while (hdist > 1 && distLens[hdist - 1] === 0) hdist--;
+    const alle = [...litLens.slice(0, hlit), ...distLens.slice(0, hdist)];
+    const rle = rleLengths(alle);
+    const clFreq = new Int32Array(19);
+    for (const r of rle) clFreq[r.s]++;
+    const clLens = codeLengths(clFreq, 7), clCodes = canonical(clLens);
+    let hclen = 19; while (hclen > 4 && clLens[CL_ORDER[hclen - 1]] === 0) hclen--;
+
+    const w = new BitWriter();
+    w.push(src.length, 32);
+    w.push(hlit - 257, 5); w.push(hdist - 1, 5); w.push(hclen - 4, 4);
+    for (let i = 0; i < hclen; i++) w.push(clLens[CL_ORDER[i]], 3);
+    for (const r of rle) { w.push(clCodes[r.s], clLens[r.s]); if (r.bits) w.pushRev(r.extra, r.bits); }
+    const kopfBits = w.bitLength;
+
+    let litBits = 0, matchBits = 0, extraBits = 0;
+    for (const t of tokens) {
+      const vor = w.bitLength;
+      if (t.t === 0) { w.push(litCodes[t.v], litLens[t.v]); litBits += litLens[t.v]; }
+      else {
+        const lc = lenCode(t.len), dc = distCode(t.dist);
+        w.push(litCodes[257 + lc], litLens[257 + lc]);
+        if (LEN_EXTRA[lc]) w.pushRev(t.len - LEN_BASE[lc], LEN_EXTRA[lc]);
+        w.push(distCodes[dc], distLens[dc]);
+        if (DIST_EXTRA[dc]) w.pushRev(t.dist - DIST_BASE[dc], DIST_EXTRA[dc]);
+        matchBits += litLens[257 + lc] + distLens[dc];
+        extraBits += LEN_EXTRA[lc] + DIST_EXTRA[dc];
+      }
+      t.bits = w.bitLength - vor;
+    }
+    w.push(litCodes[EOB], litLens[EOB]);
+    return {
+      bytes: w.finish(), tokens, litLens, distLens, kopfBits,
+      datenBits: w.bitLength - kopfBits, litBits, matchBits, extraBits,
+      eobBits: litLens[EOB]
+    };
+  }
+
+  function buildDecoder(lens) {
+    let maxLen = 1; for (const l of lens) if (l > maxLen) maxLen = l;
+    const counts = new Int32Array(maxLen + 1);
+    for (const l of lens) if (l) counts[l]++;
+    const syms = [];
+    for (let l = 1; l <= maxLen; l++) for (let s = 0; s < lens.length; s++) if (lens[s] === l) syms.push(s);
+    return { counts, syms, maxLen };
+  }
+  function decodeSym(r, d) {
+    let code = 0, first = 0, index = 0;
+    for (let len = 1; len <= d.maxLen; len++) {
+      code |= r.read(1);
+      const c = d.counts[len];
+      if (code - first < c) return d.syms[index + (code - first)];
+      index += c; first = (first + c) << 1; code <<= 1;
+    }
+    throw new Error("ungültiger Huffman-Code");
+  }
+
+  function decode(buf) {
+    const r = new BitReader(buf);
+    const n = r.read(32);
+    const hlit = r.read(5) + 257, hdist = r.read(5) + 1, hclen = r.read(4) + 4;
+    const clLens = new Uint8Array(19);
+    for (let i = 0; i < hclen; i++) clLens[CL_ORDER[i]] = r.read(3);
+    const dcl = buildDecoder(clLens);
+    const alle = new Uint8Array(hlit + hdist);
+    let p = 0;
+    while (p < alle.length) {
+      const s = decodeSym(r, dcl);
+      if (s < 16) alle[p++] = s;
+      else if (s === 16) { const k = r.readRev(2) + 3, v = alle[p - 1]; for (let j = 0; j < k; j++) alle[p++] = v; }
+      else if (s === 17) p += r.readRev(3) + 3;
+      else p += r.readRev(7) + 11;
+    }
+    const litLens = new Uint8Array(LIT_N), distLens = new Uint8Array(DIST_N);
+    litLens.set(alle.slice(0, hlit)); distLens.set(alle.slice(hlit, hlit + hdist));
+    const dl = buildDecoder(litLens), dd = buildDecoder(distLens);
+    const out = new Uint8Array(n);
+    let q = 0;
+    while (q < n) {
+      const s = decodeSym(r, dl);
+      if (s === EOB) break;
+      if (s < 256) out[q++] = s;
+      else {
+        const lc = s - 257;
+        const len = LEN_BASE[lc] + (LEN_EXTRA[lc] ? r.readRev(LEN_EXTRA[lc]) : 0);
+        const dc = decodeSym(r, dd);
+        const dist = DIST_BASE[dc] + (DIST_EXTRA[dc] ? r.readRev(DIST_EXTRA[dc]) : 0);
+        for (let k = 0; k < len; k++) { out[q] = out[q - dist]; q++; }
+      }
+    }
+    return out;
+  }
+
+  /* ========================== Proben ========================== */
+  const PROBEN = {
+    // Bewusst durchgeschriebener Text ohne Wiederholung: ein fünfmal kopierter Absatz
+    // würde eine Quote zeigen, die mit gewöhnlicher Prosa nichts zu tun hat.
+    prosa:
+      "Wer einen Text zusammenpresst, führt in Wahrheit Buch. Zwei Posten stehen darin: das " +
+      "bereits Dagewesene und das Neue. Für das Dagewesene genügt ein Verweis nach hinten, " +
+      "kurz und billig. Das Neue dagegen muss ausgeschrieben werden, Zeichen für Zeichen, und " +
+      "kostet entsprechend.\n\n" +
+      "Wie viel ein einzelner Buchstabe wiegt, entscheidet nicht sein Aussehen, sondern seine " +
+      "Häufigkeit. In deutscher Schriftsprache trägt das e mit Abstand am meisten; es bekommt " +
+      "deshalb ein kurzes Wort aus wenigen Bit. Ein q oder ein x taucht kaum auf und wird mit " +
+      "einem langen Wort bezahlt. Diese Ungleichheit ist der ganze Gewinn.\n\n" +
+      "Merkwürdig wird es an den Rändern. Ein sehr kurzer Text lässt sich schwer verkleinern, " +
+      "weil die Tabelle mit den Wortlängen mitgeliefert werden muss und ihrerseits Platz " +
+      "beansprucht. Ein zufälliger Text wiederum lässt sich überhaupt nicht verkleinern, denn " +
+      "wo nichts wiederkehrt und nichts überwiegt, gibt es nichts einzusparen. Beides sieht man " +
+      "an den Proben oben unmittelbar.\n\n" +
+      "Am aufschlussreichsten sind gewachsene Texte: Verwaltungsschreiben, Programmzeilen, " +
+      "Protokolle. Dort wiederholen sich Wendungen, Einrückungen und Satzgerüste so beharrlich, " +
+      "dass am Ende weniger übrig bleibt als ein Zehntel. Sprache ist erstaunlich redundant, " +
+      "und das ist kein Mangel, sondern der Grund, warum man einander auch bei schlechter " +
+      "Verbindung noch versteht.",
+    code: ("function step(atCell) {\n  if (S.finished) return false;\n  const i = pickCell();\n" +
+      "  if (i < 0) { S.finished = true; return false; }\n  const p = chooseIn(i);\n" +
+      "  return decide(i, p);\n}\n\n").repeat(8),
+    liste: Array.from({ length: 90 }, (_, i) =>
+      "Position " + String(i + 1).padStart(3, "0") + " | Menge " + ((i * 7) % 40 + 1) +
+      " | Status offen | Bearbeiter unbekannt").join("\n"),
+    einmalig: (() => {
+      let s = "", seed = 7;
+      const w = ["Ufer","Zange","blicken","murmeln","Kranz","spitz","Wolke","riechen","Halm","dunkel",
+                 "Fuge","zittern","Nabel","kalt","Speiche","werfen","Gischt","reifen","Kerbe","glatt"];
+      for (let i = 0; i < 260; i++) { seed = (seed * 1103515 + 12345) % 2147483647; s += w[seed % w.length] + (i % 11 === 10 ? ".\n" : " "); }
+      return s;
+    })(),
+    zufall: (() => {
+      let s = "", seed = 99;
+      for (let i = 0; i < 2200; i++) { seed = (seed * 1103515 + 12345) % 2147483647; s += String.fromCharCode(33 + seed % 94); }
+      return s;
+    })()
+  };
+
+  /* ========================= Darstellung ======================= */
+  const $ = (id) => document.getElementById(id);
+  const nf = new Intl.NumberFormat("de-DE");
+  const enc = new TextEncoder(), dec = new TextDecoder();
+  let letzter = null;
+
+  function byteToCharMap(text) {
+    const map = [];
+    for (let i = 0; i < text.length; i++) {
+      const n = enc.encode(text[i]).length;
+      for (let k = 0; k < n; k++) map.push(i);
+    }
+    map.push(text.length);
+    return map;
+  }
+
+  const GRENZE = 6000;   // so viele Zeichen werden gezeichnet; gerechnet wird alles
+
+  function zeichneText(text, tokens, map) {
+    const host = $("text");
+    const svg = $("boegen");
+    host.textContent = "";
+    host.append(svg);
+    svg.innerHTML = "";
+    $("karte-hinweis").textContent = "Über eine unterstrichene Stelle fahren zeigt, woher sie kopiert wurde";
+
+    const frag = document.createDocumentFragment();
+    let gezeichnet = 0;
+    for (const t of tokens) {
+      const von = map[t.pos];
+      const bis = map[Math.min(map.length - 1, t.pos + (t.t === 0 ? 1 : t.len))];
+      if (von >= GRENZE) break;
+      const stueck = text.slice(von, Math.min(bis, GRENZE));
+      if (!stueck) continue;
+      const span = document.createElement("span");
+      span.className = "tok" + (t.t === 1 ? " m" : "");
+      span.textContent = stueck;
+      // Bezugspunkt ist das ungepackte Byte mit 8 Bit. Linear aufgetragen liegt fast
+      // alles im Mittelfeld und die Karte wird gleichmäßig rot; die Potenz spreizt
+      // das Billige nach unten auf.
+      const proZeichen = t.bits / Math.max(1, stueck.length);
+      const stark = Math.pow(Math.min(1, proZeichen / 8), 1.7);
+      span.style.background = "color-mix(in srgb, var(--costly) " + (stark * 58).toFixed(1) + "%, transparent)";
+      span.dataset.von = String(von);
+      span.dataset.bits = String(t.bits);
+      if (t.t === 1) {
+        span.dataset.quelleVon = String(map[t.pos - t.dist]);
+        span.dataset.len = String(t.len);
+        span.dataset.dist = String(t.dist);
+      }
+      frag.append(span);
+      gezeichnet = Math.min(bis, GRENZE);
+    }
+    host.append(frag);
+
+    if (text.length > GRENZE) {
+      const rest = document.createElement("span");
+      rest.className = "abschnitt";
+      rest.textContent = "… " + nf.format(text.length - gezeichnet) + " weitere Zeichen gerechnet, aber nicht gezeichnet";
+      host.append(rest);
+    }
+    verknuepfeHover(host, svg);
+  }
+
+  function verknuepfeHover(host, svg) {
+    let aktiv = null;
+    host.addEventListener("mouseover", (e) => {
+      const el = e.target.closest(".tok.m");
+      if (!el || el === aktiv) return;
+      loesche();
+      aktiv = el;
+      el.classList.add("aktiv");
+      // Die Fundstelle kann über mehrere Marken hinweg liegen — alle überlappenden
+      // hervorheben, nicht nur die, in der sie beginnt.
+      const quelleVon = +el.dataset.quelleVon, laenge = +el.dataset.len;
+      const treffer = [...host.querySelectorAll(".tok")].filter((s) => {
+        const v = +s.dataset.von, w = v + s.textContent.length;
+        return v < quelleVon + laenge && w > quelleVon;
+      });
+      if (!treffer.length) return;
+      treffer.forEach((s) => s.classList.add("q"));
+
+      const box = host.getBoundingClientRect();
+      const mitte = (n) => { const r = n.getClientRects()[0] || n.getBoundingClientRect();
+        return { x: r.left - box.left + r.width / 2, y: r.top - box.top + host.scrollTop + r.height / 2 }; };
+      const a = mitte(treffer[0]), b = mitte(el);
+      const hoch = Math.max(6, Math.min(a.y, b.y) - Math.min(52, Math.abs(b.y - a.y) * .4 + 16));
+      const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      p.setAttribute("d", "M " + a.x + " " + a.y + " Q " + ((a.x + b.x) / 2) + " " + hoch + " " + b.x + " " + b.y);
+      svg.append(p);
+      $("karte-hinweis").textContent =
+        el.dataset.len + " Zeichen, " + nf.format(el.dataset.dist) + " zurück, " + el.dataset.bits + " Bit";
+    });
+    host.addEventListener("mouseleave", loesche);
+    function loesche() {
+      if (aktiv) aktiv.classList.remove("aktiv");
+      host.querySelectorAll(".tok.q").forEach((s) => s.classList.remove("q"));
+      svg.innerHTML = "";
+      aktiv = null;
+    }
+  }
+
+  function zeichneHistogramm(litLens) {
+    const c = $("hist"), g = c.getContext("2d");
+    const cs = getComputedStyle(document.documentElement);
+    const panel = cs.getPropertyValue("--panel").trim();
+    const cheap = cs.getPropertyValue("--cheap").trim();
+    const rule = cs.getPropertyValue("--rule").trim();
+    const muted = cs.getPropertyValue("--muted").trim();
+    g.fillStyle = panel; g.fillRect(0, 0, c.width, c.height);
+
+    const zaehl = new Int32Array(16);
+    for (const l of litLens) if (l) zaehl[l]++;
+    let max = 1; for (const z of zaehl) if (z > max) max = z;
+    const bw = c.width / 15, pad = 22;
+    g.strokeStyle = rule; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(0, c.height - pad + .5); g.lineTo(c.width, c.height - pad + .5); g.stroke();
+    g.font = "10px ui-monospace, Consolas, monospace";
+    g.textAlign = "center";
+    for (let l = 1; l <= 15; l++) {
+      const h = (zaehl[l] / max) * (c.height - pad - 8);
+      const x = (l - 1) * bw;
+      if (zaehl[l]) {
+        g.fillStyle = cheap;
+        g.fillRect(x + 3, c.height - pad - h, bw - 6, h);
+        g.fillStyle = muted;
+        g.fillText(String(zaehl[l]), x + bw / 2, c.height - pad - h - 4);
+      }
+      g.fillStyle = muted;
+      g.fillText(String(l), x + bw / 2, c.height - 7);
+    }
+    let summe = 0, gewicht = 0;
+    for (let l = 1; l <= 15; l++) { summe += zaehl[l]; gewicht += zaehl[l] * l; }
+    $("hist-note").textContent = summe
+      ? summe + " benutzte Symbole · kürzestes " + zaehl.findIndex((z, i) => i > 0 && z) +
+        " Bit · Mittel " + (gewicht / summe).toFixed(2) + " Bit"
+      : "—";
+  }
+
+  function fuelleAufteilung(e) {
+    const tb = $("aufteilung").querySelector("tbody");
+    tb.textContent = "";
+    const gesamt = e.kopfBits + e.datenBits;
+    const zeilen = [
+      ["Codetabelle im Kopf", e.kopfBits, "warn"],
+      ["Literale (einzeln geschrieben)", e.litBits, ""],
+      ["Rückverweise (Länge + Distanz)", e.matchBits, "gut"],
+      ["Zusatzbits für Länge/Distanz", e.extraBits, ""],
+      ["Endmarke", e.eobBits, ""]
+    ];
+    for (const [name, bits, klasse] of zeilen) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = "<td>" + name + "</td><td class='num'>" + nf.format(bits) +
+        "</td><td class='num " + klasse + "'>" + (100 * bits / gesamt).toFixed(1) + " %</td>";
+      tb.append(tr);
+    }
+  }
+
+  async function nativeGroesse(bytes) {
+    if (typeof CompressionStream === "undefined") return null;
+    try {
+      const cs = new CompressionStream("deflate-raw");
+      const w = cs.writable.getWriter();
+      w.write(bytes); w.close();
+      const buf = await new Response(cs.readable).arrayBuffer();
+      return buf.byteLength;
+    } catch (err) { return null; }
+  }
+
+  async function rechne(text) {
+    $("status").textContent = "rechnet …";
+    await new Promise((r) => setTimeout(r, 0));
+
+    const src = enc.encode(text);
+    const t0 = performance.now();
+    const e = encode(src);
+    const encMs = performance.now() - t0;
+
+    const zurueck = decode(e.bytes);
+    let gleich = zurueck.length === src.length;
+    if (gleich) for (let i = 0; i < src.length; i++) if (zurueck[i] !== src[i]) { gleich = false; break; }
+
+    const map = byteToCharMap(text);
+    zeichneText(text, e.tokens, map);
+    zeichneHistogramm(e.litLens);
+    fuelleAufteilung(e);
+
+    const gepackt = e.bytes.length;
+    $("k-org").innerHTML = nf.format(src.length) + " <small>Byte</small>";
+    $("k-neu").innerHTML = nf.format(gepackt) + " <small>Byte</small>";
+    $("k-kopf").innerHTML = nf.format(Math.ceil(e.kopfBits / 8)) + " <small>Byte</small>";
+    const quote = $("k-quote");
+    quote.textContent = (100 * gepackt / src.length).toFixed(1) + " %";
+    quote.className = gepackt < src.length ? "gut" : "warn";
+    $("k-bpc").textContent = (8 * gepackt / src.length).toFixed(2);
+
+    let ausVerweis = 0;
+    for (const t of e.tokens) if (t.t === 1) ausVerweis += t.len;
+    $("k-anteil").textContent = (100 * ausVerweis / Math.max(1, src.length)).toFixed(1) + " %";
+
+    const r = $("k-rueck");
+    r.textContent = gleich ? "identisch" : "ABWEICHUNG";
+    r.className = gleich ? "gut" : "warn";
+
+    $("status").textContent = "fertig · " + encMs.toFixed(0) + " ms · " +
+      nf.format(e.tokens.length) + " Marken";
+
+    const nativ = await nativeGroesse(src);
+    const nd = $("k-nativ");
+    if (nativ === null) { nd.innerHTML = "<small>nicht verfügbar</small>"; nd.className = ""; }
+    else {
+      nd.innerHTML = nf.format(nativ) + " <small>Byte · " + (gepackt / nativ).toFixed(2) + "×</small>";
+      nd.className = gepackt <= nativ * 1.1 ? "gut" : "";
+    }
+    letzter = { text, e };
+  }
+
+  /* ========================= Bedienung ======================== */
+  $("probe").addEventListener("change", () => {
+    $("eingabe").hidden = true;
+    rechne(PROBEN[$("probe").value]);
+  });
+  $("eigen").addEventListener("click", () => {
+    const box = $("eingabe");
+    box.hidden = !box.hidden;
+    if (!box.hidden) { $("quelle").value = $("quelle").value || PROBEN[$("probe").value]; $("quelle").focus(); }
+  });
+  $("rechne").addEventListener("click", () => {
+    const eigen = !$("eingabe").hidden && $("quelle").value.trim();
+    rechne(eigen ? $("quelle").value : PROBEN[$("probe").value]);
+  });
+
+  const mq = matchMedia("(prefers-color-scheme: dark)");
+  mq.addEventListener("change", () => { if (letzter) zeichneHistogramm(letzter.e.litLens); });
+  new MutationObserver(() => { if (letzter) zeichneHistogramm(letzter.e.litLens); })
+    .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  rechne(PROBEN.prosa);
+})();
+</script>
+</body>
+</html>
