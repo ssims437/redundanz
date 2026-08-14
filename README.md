@@ -101,5 +101,8 @@ Alle drei erklären den verbliebenen Abstand von ein bis drei Prozent.
 
 [MIT](LICENSE)
 
-Verwandt: [Plotterblätter](https://github.com/ssims437/plotterblaetter) — vier Blätter
-über Struktur, die aus lokalen Regeln fällt.
+Verwandt: [Plotterblätter](https://github.com/ssims437/plotterblaetter) ·
+[Reparatur](https://github.com/ssims437/reparatur) ·
+[Würfel](https://github.com/ssims437/wuerfel) ·
+[Rechenwerk](https://github.com/ssims437/rechenwerk) ·
+[Nachkomma](https://github.com/ssims437/nachkomma)
