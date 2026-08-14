@@ -108,4 +108,5 @@ Verwandt: [Plotterblätter](https://github.com/ssims437/plotterblaetter) ·
 [Nachkomma](https://github.com/ssims437/nachkomma) ·
 [Zeitsprung](https://github.com/ssims437/zeitsprung) ·
 [Gradtage](https://github.com/ssims437/gradtage) ·
-[Stimmführung](https://github.com/ssims437/stimmfuehrung)
+[Stimmführung](https://github.com/ssims437/stimmfuehrung) ·
+[Verzerrung](https://github.com/ssims437/verzerrung)
