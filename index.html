@@ -79,7 +79,7 @@
     letter-spacing: -.03em; margin: 0; text-wrap: balance;
   }
   h1 span { color: var(--cheap); }
-  .lead { max-width: 68ch; color: var(--muted); margin: 0; }
+  .lead { max-width: 68ch; color: var(--muted); margin:0 auto; text-align:center; }
   .lead b { color: var(--ink); font-weight: 600; }
 
   /* ---------- Bedienleiste ---------- */
@@ -222,6 +222,11 @@
     font-family: var(--f-mono); font-size: 10px; letter-spacing: .12em;
     text-transform: uppercase; color: var(--muted);
   }
+
+  /* PFLEGE: breite-schirme */
+  @media (min-width: 1500px) { .wrap { max-width: 1360px; } }
+  @media (min-width: 1800px) { .wrap { max-width: 1560px; } }
+  @media (min-width: 2200px) { .wrap { max-width: 1800px; } }
 </style>
 </head>
 <body>
@@ -342,6 +347,32 @@
   </footer>
 </div>
 
+<script>
+/* PFLEGE: schaerfe */
+(function () {
+  "use strict";
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  if (dpr <= 1.01) return;
+  const wb = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, "width");
+  const hb = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, "height");
+  const roh = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (art, ...rest) {
+    const g = roh.call(this, art, ...rest);
+    if (art !== "2d" || this.__scharf) return g;
+    this.__scharf = true;
+    let lw = wb.get.call(this), lh = hb.get.call(this);
+    const anlegen = () => {
+      wb.set.call(this, Math.round(lw * dpr));
+      hb.set.call(this, Math.round(lh * dpr));
+      roh.call(this, "2d").setTransform(dpr, 0, 0, dpr, 0, 0);   // Größe setzen löscht den Zustand
+    };
+    Object.defineProperty(this, "width",  { get: () => lw, set: (v) => { lw = v; anlegen(); }, configurable: true });
+    Object.defineProperty(this, "height", { get: () => lh, set: (v) => { lh = v; anlegen(); }, configurable: true });
+    anlegen();
+    return g;
+  };
+})();
+</script>
 <script>
 (() => {
   "use strict";
