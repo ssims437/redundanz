@@ -8,53 +8,53 @@
 
 <style>
   :root {
-    --paper:  #EDEFEA;
-    --panel:  #F7F8F4;
-    --sunk:   #E1E5DE;
-    --rule:   #C7CDC5;
-    --ink:    #1C221E;
-    --muted:  #69736B;
+    --grund:  #EDEFEA;
+    --feld:  #F7F8F4;
+    --tief:   #E1E5DE;
+    --linie:   #C7CDC5;
+    --tinte:    #1C221E;
+    --leise:  #5D665F;
     --cheap:  #2E6F5E;
     --costly: #B23A2E;
-    --focus:  #2E6F5E;
-    --shadow: 0 1px 0 rgba(28,34,30,.05), 0 10px 24px -16px rgba(28,34,30,.5);
+    --merk:  #2E6F5E;
+    --schatten: 0 1px 0 rgba(28,34,30,.05), 0 10px 24px -16px rgba(28,34,30,.5);
 
-    --f-body: -apple-system, "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    --f-mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "DejaVu Sans Mono", monospace;
+    --f-text: -apple-system, "Segoe UI Variable Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --f-fest: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "DejaVu Sans Mono", monospace;
   }
 
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --paper:  #141715;
-      --panel:  #1B1F1C;
-      --sunk:   #0E110F;
-      --rule:   #2B322D;
-      --ink:    #DDE3DC;
-      --muted:  #8A948B;
+      --grund:  #141715;
+      --feld:  #1B1F1C;
+      --tief:   #0E110F;
+      --linie:   #2B322D;
+      --tinte:    #DDE3DC;
+      --leise:  #8A948B;
       --cheap:  #57B39A;
       --costly: #E0705E;
-      --focus:  #57B39A;
-      --shadow: 0 1px 0 rgba(255,255,255,.03), 0 12px 30px -18px #000;
+      --merk:  #57B39A;
+      --schatten: 0 1px 0 rgba(255,255,255,.03), 0 12px 30px -18px #000;
     }
   }
   :root[data-theme="dark"] {
-    --paper:  #141715;
-    --panel:  #1B1F1C;
-    --sunk:   #0E110F;
-    --rule:   #2B322D;
-    --ink:    #DDE3DC;
-    --muted:  #8A948B;
+    --grund:  #141715;
+    --feld:  #1B1F1C;
+    --tief:   #0E110F;
+    --linie:   #2B322D;
+    --tinte:    #DDE3DC;
+    --leise:  #8A948B;
     --cheap:  #57B39A;
     --costly: #E0705E;
-    --focus:  #57B39A;
-    --shadow: 0 1px 0 rgba(255,255,255,.03), 0 12px 30px -18px #000;
+    --merk:  #57B39A;
+    --schatten: 0 1px 0 rgba(255,255,255,.03), 0 12px 30px -18px #000;
   }
 
   * { box-sizing: border-box; }
 
   body {
-    margin: 0; background: var(--paper); color: var(--ink);
-    font-family: var(--f-body); font-size: 15px; line-height: 1.55;
+    margin: 0; background: var(--grund); color: var(--tinte);
+    font-family: var(--f-text); font-size: 15px; line-height: 1.55;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -66,85 +66,83 @@
 
   /* ---------- Kopf im Beleg-Stil ---------- */
   header.doc { display: flex; flex-direction: column; gap: 10px; }
-  .stempel {
-    font-family: var(--f-mono); font-size: 10px; letter-spacing: .22em;
-    text-transform: uppercase; color: var(--muted);
-    display: flex; gap: 12px; align-items: center; margin: 0;
-  }
-  .stempel::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
+  .marke { font-family:var(--f-fest); font-size:10px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--leise); display:flex; gap:12px; align-items:center; margin:0; }
+  .marke::after { content:""; flex:1; height:1px; background:var(--linie); }
+  
 
   h1 {
-    font-family: var(--f-mono); font-weight: 700;
-    font-size: clamp(26px, 4.6vw, 44px); line-height: 1.05;
+    font-family: var(--f-fest); font-weight: 700;
+    font-size: clamp(24px,4.2vw,40px); line-height: 1.05;
     letter-spacing: -.03em; margin: 0; text-wrap: balance;
   }
   h1 span { color: var(--cheap); }
-  .lead { max-width: 68ch; color: var(--muted); margin:0; }
-  .lead b { color: var(--ink); font-weight: 600; }
+  .lead { max-width: 68ch; color: var(--leise); margin:0; }
+  .lead b { color: var(--tinte); font-weight: 600; }
 
   /* ---------- Bedienleiste ---------- */
   .bar {
     display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
-    background: var(--panel); border: 1px solid var(--rule);
-    padding: 10px 12px; box-shadow: var(--shadow);
+    background: var(--feld); border: 1px solid var(--linie);
+    padding: 10px 12px; box-shadow: var(--schatten);
   }
   .bar .label {
-    font-family: var(--f-mono); font-size: 10px; letter-spacing: .16em;
-    text-transform: uppercase; color: var(--muted);
+    font-family: var(--f-fest); font-size: 10px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--leise);
   }
   button, select {
-    font-family: var(--f-mono); font-size: 12px; color: var(--ink);
-    background: var(--paper); border: 1px solid var(--rule); border-radius: 0;
+    font-family: var(--f-fest); font-size: 12px; color: var(--tinte);
+    background: var(--grund); border: 1px solid var(--linie); border-radius: 0;
     padding: 7px 11px; cursor: pointer; letter-spacing: .03em;
   }
   button:hover, select:hover { border-color: var(--cheap); }
-  button:active { background: var(--sunk); }
-  button.primary { background: var(--cheap); border-color: var(--cheap); color: var(--panel); }
+  button:active { background: var(--tief); }
+  button.primary { background: var(--cheap); border-color: var(--cheap); color: var(--feld); }
   button.primary:hover { filter: brightness(1.1); }
   button:disabled { opacity: .5; cursor: default; }
-  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  :focus-visible { outline: 2px solid var(--merk); outline-offset: 2px; }
 
   /* ---------- Kennzahlen ---------- */
   .zahlen {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
-    gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+    gap: 1px; background: var(--linie); border: 1px solid var(--linie);
   }
-  .zahl { background: var(--panel); padding: 9px 11px; display: flex; flex-direction: column; gap: 1px; }
+  .zahl { background: var(--feld); padding: 9px 11px; display: flex; flex-direction: column; gap: 1px; }
   .zahl dt {
-    font-family: var(--f-mono); font-size: 9px; letter-spacing: .1em;
-    text-transform: uppercase; color: var(--muted); margin: 0;
+    font-family: var(--f-fest); font-size: 9px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--leise); margin: 0;
   }
   .zahl dd {
-    margin: 0; font-family: var(--f-mono); font-size: 16px;
+    margin: 0; font-family: var(--f-fest); font-size: 16px;
     font-variant-numeric: tabular-nums; letter-spacing: -.02em;
     overflow-wrap: anywhere;
   }
-  .zahl dd small { font-size: 11px; color: var(--muted); letter-spacing: 0; }
+  .zahl dd small { font-size: 11px; color: var(--leise); letter-spacing: 0; }
   .zahl dd.gut { color: var(--cheap); }
   .zahl dd.warn { color: var(--costly); }
 
   /* ---------- Textfläche ---------- */
   .flaeche {
-    position: relative; background: var(--panel);
-    border: 1px solid var(--rule); box-shadow: var(--shadow);
+    position: relative; background: var(--feld);
+    border: 1px solid var(--linie); box-shadow: var(--schatten);
   }
   .flaeche-kopf {
     display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
-    padding: 9px 12px; border-bottom: 1px solid var(--rule);
+    padding: 9px 12px; border-bottom: 1px solid var(--linie);
   }
   .skala { display: flex; align-items: center; gap: 7px; margin-left: auto; }
   .skala .balken {
-    width: 120px; height: 9px; border: 1px solid var(--rule);
-    background: linear-gradient(90deg, var(--panel), var(--costly));
+    width: 120px; height: 9px; border: 1px solid var(--linie);
+    background: linear-gradient(90deg, var(--feld), var(--costly));
   }
   .skala span {
-    font-family: var(--f-mono); font-size: 9px; letter-spacing: .1em;
-    text-transform: uppercase; color: var(--muted);
+    font-family: var(--f-fest); font-size: 9px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--leise);
   }
 
   #text {
     position: relative; margin: 0; padding: 16px 18px 20px;
-    font-family: var(--f-mono); font-size: 13.5px; line-height: 1.85;
+    font-family: var(--f-fest); font-size: 13.5px; line-height: 1.85;
     white-space: pre-wrap; word-break: break-word;
     max-height: 62vh; overflow: auto;
   }
@@ -154,8 +152,8 @@
   #text .tok.q { outline: 1px dashed var(--cheap); outline-offset: 1px; }
   #text .abschnitt {
     display: block; margin-top: 10px; padding-top: 8px;
-    border-top: 1px dashed var(--rule);
-    font-size: 11px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase;
+    border-top: 1px dashed var(--linie);
+    font-size: 11px; color: var(--leise); letter-spacing: .08em; text-transform: uppercase;
   }
   svg.boegen { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
   svg.boegen path { fill: none; stroke: var(--cheap); stroke-width: 1.4; opacity: .85; }
@@ -166,38 +164,38 @@
 
   textarea {
     width: 100%; min-height: 150px; resize: vertical;
-    font-family: var(--f-mono); font-size: 13px; line-height: 1.6;
-    background: var(--panel); color: var(--ink);
-    border: 1px solid var(--rule); padding: 12px;
+    font-family: var(--f-fest); font-size: 13px; line-height: 1.6;
+    background: var(--feld); color: var(--tinte);
+    border: 1px solid var(--linie); padding: 12px;
   }
 
   .hinweis {
-    font-family: var(--f-mono); font-size: 10px; letter-spacing: .1em;
-    text-transform: uppercase; color: var(--muted); margin: 0;
+    font-family: var(--f-fest); font-size: 10px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--leise); margin: 0;
   }
 
   /* ---------- Histogramm ---------- */
   .zwei { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; }
   .kasten {
-    background: var(--panel); border: 1px solid var(--rule);
-    box-shadow: var(--shadow); padding: 12px 14px 14px;
+    background: var(--feld); border: 1px solid var(--linie);
+    box-shadow: var(--schatten); padding: 12px 14px 14px;
     display: flex; flex-direction: column; gap: 10px;
   }
   .kasten h2 {
-    font-family: var(--f-mono); font-size: 10px; letter-spacing: .16em;
-    text-transform: uppercase; color: var(--muted); margin: 0;
-    padding-bottom: 7px; border-bottom: 1px solid var(--rule); font-weight: 500;
+    font-family: var(--f-fest); font-size: 10px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--leise); margin: 0;
+    padding-bottom: 7px; border-bottom: 1px solid var(--linie); font-weight: 500;
   }
   canvas { display: block; width: 100%; height: auto; }
 
   table.tab {
     width: 100%; border-collapse: collapse;
-    font-family: var(--f-mono); font-size: 12px; font-variant-numeric: tabular-nums;
+    font-family: var(--f-fest); font-size: 12px; font-variant-numeric: tabular-nums;
   }
-  table.tab th, table.tab td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--rule); text-align: left; }
+  table.tab th, table.tab td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--linie); text-align: left; }
   table.tab th {
     font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
-    color: var(--muted); font-weight: 500;
+    color: var(--leise); font-weight: 500;
   }
   table.tab td.num { text-align: right; }
   table.tab td.gut { color: var(--cheap); }
@@ -206,27 +204,38 @@
   /* ---------- Fließtext ---------- */
   .noten {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 26px; border-top: 1px solid var(--rule); padding-top: 22px;
+    gap: 26px; border-top: 1px solid var(--linie); padding-top: 22px;
   }
   .noten section { display: flex; flex-direction: column; gap: 7px; }
-  .noten h3 { font-family: var(--f-mono); font-size: 14px; margin: 0; letter-spacing: -.01em; }
-  .noten p { margin: 0; color: var(--muted); font-size: 14px; max-width: 52ch; }
-  .noten b { color: var(--ink); font-weight: 600; }
+  .noten h3 { font-family: var(--f-fest); font-size: 14px; margin: 0; letter-spacing: -.01em; }
+  .noten p { margin: 0; color: var(--leise); font-size: 14px; max-width: 52ch; }
+  .noten b { color: var(--tinte); font-weight: 600; }
   code {
-    font-family: var(--f-mono); font-size: .9em; background: var(--sunk);
-    padding: 1px 4px; color: var(--ink);
+    font-family: var(--f-fest); font-size: .9em; background: var(--tief);
+    padding: 1px 4px; color: var(--tinte);
   }
 
   footer {
-    border-top: 1px solid var(--rule); padding-top: 16px;
-    font-family: var(--f-mono); font-size: 10px; letter-spacing: .12em;
-    text-transform: uppercase; color: var(--muted);
+    border-top: 1px solid var(--linie); padding-top: 16px;
+    font-family: var(--f-fest); font-size: 10px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--leise);
   }
 
   /* PFLEGE: breite-schirme */
   @media (min-width: 1500px) { .wrap { max-width: 1360px; } }
   @media (min-width: 1800px) { .wrap { max-width: 1560px; } }
   @media (min-width: 2200px) { .wrap { max-width: 1800px; } }
+
+  /* PFLEGE: schmalschirm */
+  @media (max-width: 700px) {
+    table { display: block; max-width: 100%; overflow-x: auto; }
+    select, input[type=text], input[type=number], input[type=search] { max-width: 100%; }
+  }
+
+  /* PFLEGE: klickflaechen */
+  button, select { min-height: 34px; }
+  input[type=range] { height: 26px; }
+  .marke button { order: 2; margin-left: 12px; }
 </style>
 </head>
 <body>
@@ -234,7 +243,7 @@
 <div class="wrap">
 
   <header class="doc">
-    <p class="stempel">LZ77 + Huffman · von Grund auf · Rückweg geprüft</p>
+    <p class="marke">Blatt · Daten <button id="b-thema">Ansicht</button></p>
     <h1>Redundanz: wo ein Text sich <span>wiederholt</span></h1>
     <p class="lead">
       Kompression ist keine Magie, sondern Buchführung: was schon einmal dastand, wird nicht
@@ -765,10 +774,10 @@
   function zeichneHistogramm(litLens) {
     const c = $("hist"), g = c.getContext("2d");
     const cs = getComputedStyle(document.documentElement);
-    const panel = cs.getPropertyValue("--panel").trim();
+    const panel = cs.getPropertyValue("--feld").trim();
     const cheap = cs.getPropertyValue("--cheap").trim();
-    const rule = cs.getPropertyValue("--rule").trim();
-    const muted = cs.getPropertyValue("--muted").trim();
+    const rule = cs.getPropertyValue("--linie").trim();
+    const muted = cs.getPropertyValue("--leise").trim();
     g.fillStyle = panel; g.fillRect(0, 0, c.width, c.height);
 
     const zaehl = new Int32Array(16);
@@ -898,6 +907,31 @@
     .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 
   rechne(PROBEN.prosa);
+
+  /* PFLEGE: ansicht — dieselbe Bedienung wie in den übrigen Blättern: erst die
+     Systemvorgabe, ein Druck stellt bewusst um. Gezeichnet wird danach neu,
+     weil Farben aus dem Stilblatt im Bild nicht von selbst nachziehen. */
+  (function () {
+    const knopf = document.getElementById("b-thema");
+    if (!knopf) return;
+    knopf.addEventListener("click", () => {
+      const jetzt = document.documentElement.getAttribute("data-theme");
+      const dunkel = matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.setAttribute("data-theme",
+        jetzt ? (jetzt === "dark" ? "light" : "dark") : (dunkel ? "light" : "dark"));
+      const male = [];
+      if (typeof refreshTheme === "function") male.push(refreshTheme);
+      if (typeof neuFarben === "function") male.push(neuFarben);
+      if (typeof zeichnen === "function") male.push(zeichnen);
+      if (typeof zeichne === "function") male.push(zeichne);
+      if (typeof draw === "function") male.push(draw);
+      if (typeof render === "function") male.push(render);
+      if (typeof lauf === "function") male.push(lauf);
+      if (typeof neu === "function") male.push(neu);
+      for (const f of male) { try { f(); } catch (e) { void e; } }
+    });
+  })();
+
 })();
 </script>
 </body>
