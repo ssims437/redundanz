@@ -930,6 +930,20 @@
       if (typeof neu === "function") male.push(neu);
       for (const f of male) { try { f(); } catch (e) { void e; } }
     });
+    /* Der Systemwechsel muss dasselbe tun wie der Knopf: Der Text stellt
+       seine Farben allein um, die gezeichneten Bilder nicht. */
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      const male = [];
+      if (typeof refreshTheme === "function") male.push(refreshTheme);
+      if (typeof neuFarben === "function") male.push(neuFarben);
+      if (typeof zeichnen === "function") male.push(zeichnen);
+      if (typeof zeichne === "function") male.push(zeichne);
+      if (typeof draw === "function") male.push(draw);
+      if (typeof render === "function") male.push(render);
+      if (typeof lauf === "function") male.push(lauf);
+      if (typeof neu === "function") male.push(neu);
+      for (const f of male) { try { f(); } catch (e) { void e; } }
+    });
   })();
 
 })();
